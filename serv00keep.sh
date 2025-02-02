@@ -21,6 +21,8 @@ export IP=${IP:-''}
 export reym=${reym:-''}
 export reset=${reset:-''}
 
+USERNAME=$(whoami | tr '[:upper:]' '[:lower:]')
+HOSTNAME=$(hostname)
 if [[ "$reset" =~ ^[Yy]$ ]]; then
 crontab -l | grep -v "serv00keep" >rmcron
 crontab rmcron >/dev/null 2>&1
@@ -34,15 +36,19 @@ find ~ -exec rm -rf {} \; 2>/dev/null
 echo "重置系统完成"
 fi
 sleep 2
-USERNAME=$(whoami)
-HOSTNAME=$(hostname)
-[[ "$HOSTNAME" == "s1.ct8.pl" ]] && export WORKDIR="domains/${USERNAME}.ct8.pl/logs" || export WORKDIR="domains/${USERNAME}.serv00.net/logs"
+devil www add ${USERNAME}.serv00.net php > /dev/null 2>&1
+FILE_PATH="${HOME}/domains/${USERNAME}.serv00.net/public_html"
+WORKDIR="${HOME}/domains/${USERNAME}.serv00.net/logs"
 [ -d "$WORKDIR" ] || (mkdir -p "$WORKDIR" && chmod 777 "$WORKDIR")
 
 read_ip(){
 nb=$(echo "$HOSTNAME" | cut -d '.' -f 1 | tr -d 's')
 ym=("$HOSTNAME" "cache$nb.serv00.com" "web$nb.serv00.com")
-rm -rf ip.txt
+rm -rf ip.txt hy2ip.txt
+for ip in "${ym[@]}"; do
+dig @8.8.8.8 +time=2 +short $ip >> hy2ip.txt
+sleep 1  
+done
 for ym in "${ym[@]}"; do
 # 引用frankiejun API
 response=$(curl -s "https://ss.botai.us.kg/api/getip?host=$ym")
@@ -113,7 +119,94 @@ EOF
   fi
 }
 
-# Download Dependency Files
+uuidport(){
+if [[ -z "$UUID" ]]; then
+if [ ! -e UUID.txt ]; then
+UUID=$(uuidgen -r)
+echo "$UUID" > UUID.txt
+else
+UUID=$(<UUID.txt)
+fi
+fi
+if [[ -z "$reym" ]]; then
+reym=$USERNAME.serv00.net
+fi
+if [[ -z "$vless_port" ]] || [[ -z "$vmess_port" ]] || [[ -z "$hy2_port" ]]; then
+port_list=$(devil port list)
+tcp_ports=$(echo "$port_list" | grep -c "tcp")
+udp_ports=$(echo "$port_list" | grep -c "udp")
+
+if [[ $tcp_ports -ne 2 || $udp_ports -ne 1 ]]; then
+    echo "端口数量不符合要求，正在调整..."
+
+    if [[ $tcp_ports -gt 2 ]]; then
+        tcp_to_delete=$((tcp_ports - 2))
+        echo "$port_list" | awk '/tcp/ {print $1, $2}' | head -n $tcp_to_delete | while read port type; do
+            devil port del $type $port
+            echo "已删除TCP端口: $port"
+        done
+    fi
+
+    if [[ $udp_ports -gt 1 ]]; then
+        udp_to_delete=$((udp_ports - 1))
+        echo "$port_list" | awk '/udp/ {print $1, $2}' | head -n $udp_to_delete | while read port type; do
+            devil port del $type $port
+            echo "已删除UDP端口: $port"
+        done
+    fi
+
+    if [[ $tcp_ports -lt 2 ]]; then
+        tcp_ports_to_add=$((2 - tcp_ports))
+        tcp_ports_added=0
+        while [[ $tcp_ports_added -lt $tcp_ports_to_add ]]; do
+            tcp_port=$(shuf -i 10000-65535 -n 1) 
+            result=$(devil port add tcp $tcp_port 2>&1)
+            if [[ $result == *"succesfully"* ]]; then
+                echo "已添加TCP端口: $tcp_port"
+                if [[ $tcp_ports_added -eq 0 ]]; then
+                    tcp_port1=$tcp_port
+                else
+                    tcp_port2=$tcp_port
+                fi
+                tcp_ports_added=$((tcp_ports_added + 1))
+            else
+                echo "端口 $tcp_port 不可用，尝试其他端口..."
+            fi
+        done
+    fi
+
+    if [[ $udp_ports -lt 1 ]]; then
+        while true; do
+            udp_port=$(shuf -i 10000-65535 -n 1) 
+            result=$(devil port add udp $udp_port 2>&1)
+            if [[ $result == *"succesfully"* ]]; then
+                echo "已添加UDP端口: $udp_port"
+                break
+            else
+                echo "端口 $udp_port 不可用，尝试其他端口..."
+            fi
+        done
+    fi
+    echo "端口已调整完成,将断开ssh连接"
+    sleep 3
+    devil binexec on >/dev/null 2>&1
+    kill -9 $(ps -o ppid= -p $$) >/dev/null 2>&1
+else
+    tcp_ports=$(echo "$port_list" | awk '/tcp/ {print $1}')
+    tcp_port1=$(echo "$tcp_ports" | sed -n '1p')
+    tcp_port2=$(echo "$tcp_ports" | sed -n '2p')
+    udp_port=$(echo "$port_list" | awk '/udp/ {print $1}')
+
+    echo "你的vless-reality的TCP端口: $tcp_port1" 
+    echo "你的vmess的TCP端口(设置Argo固定域名端口)：$tcp_port2"
+    echo "你的hysteria2的UDP端口: $udp_port"
+fi
+export vless_port=$tcp_port1
+export vmess_port=$tcp_port2
+export hy2_port=$udp_port
+fi
+}
+
 download_and_run_singbox() {
 if [ ! -s sb.txt ] && [ ! -s ag.txt ]; then
   ARCH=$(uname -m) && DOWNLOAD_DIR="." && mkdir -p "$DOWNLOAD_DIR" && FILE_INFO=()
@@ -192,7 +285,9 @@ nb=$(hostname | cut -d '.' -f 1 | tr -d 's')
 if [ "$nb" == "14" ]; then
 ytb='"jnn-pa.googleapis.com",'
 fi
-
+hy1p=$(sed -n '1p' hy2ip.txt)
+hy2p=$(sed -n '2p' hy2ip.txt)
+hy3p=$(sed -n '3p' hy2ip.txt)
   cat > config.json << EOF
 {
   "log": {
@@ -204,7 +299,49 @@ fi
     {
        "tag": "hysteria-in",
        "type": "hysteria2",
-       "listen": "$IP",
+       "listen": "$hy1p",
+       "listen_port": $hy2_port,
+       "users": [
+         {
+             "password": "$UUID"
+         }
+     ],
+     "masquerade": "https://www.bing.com",
+     "ignore_client_bandwidth":false,
+     "tls": {
+         "enabled": true,
+         "alpn": [
+             "h3"
+         ],
+         "certificate_path": "cert.pem",
+         "key_path": "private.key"
+        }
+    },
+        {
+       "tag": "hysteria-in",
+       "type": "hysteria2",
+       "listen": "$hy2p",
+       "listen_port": $hy2_port,
+       "users": [
+         {
+             "password": "$UUID"
+         }
+     ],
+     "masquerade": "https://www.bing.com",
+     "ignore_client_bandwidth":false,
+     "tls": {
+         "enabled": true,
+         "alpn": [
+             "h3"
+         ],
+         "certificate_path": "cert.pem",
+         "key_path": "private.key"
+        }
+    },
+        {
+       "tag": "hysteria-in",
+       "type": "hysteria2",
+       "listen": "$hy3p",
        "listen_port": $hy2_port,
        "users": [
          {
@@ -347,11 +484,13 @@ if [ -e "$(basename "${FILE_MAP[bot]}")" ]; then
    echo "$(basename "${FILE_MAP[bot]}")" > ag.txt
    agg=$(cat ag.txt)
     if [[ $ARGO_AUTH =~ ^[A-Z0-9a-z=]{120,250}$ ]]; then
-      args="tunnel --edge-ip-version auto --no-autoupdate --protocol http2 run --token ${ARGO_AUTH}"
+      #args="tunnel --edge-ip-version auto --no-autoupdate --protocol http2 run --token ${ARGO_AUTH}"
+      args="tunnel --no-autoupdate run --token ${ARGO_AUTH}"
     elif [[ $ARGO_AUTH =~ TunnelSecret ]]; then
       args="tunnel --edge-ip-version auto --config tunnel.yml run"
     else
-     args="tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile boot.log --loglevel info --url http://localhost:$vmess_port"
+     #args="tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile boot.log --loglevel info --url http://localhost:$vmess_port"
+     args="tunnel --url http://localhost:$vmess_port --no-autoupdate --logfile boot.log --loglevel info"
     fi
     nohup ./"$agg" $args >/dev/null 2>&1 &
     sleep 10
@@ -367,11 +506,13 @@ fi
 else
    agg=$(cat ag.txt)
     if [[ $ARGO_AUTH =~ ^[A-Z0-9a-z=]{120,250}$ ]]; then
-      args="tunnel --edge-ip-version auto --no-autoupdate --protocol http2 run --token ${ARGO_AUTH}"
+      #args="tunnel --edge-ip-version auto --no-autoupdate --protocol http2 run --token ${ARGO_AUTH}"
+      args="tunnel --no-autoupdate run --token ${ARGO_AUTH}"
     elif [[ $ARGO_AUTH =~ TunnelSecret ]]; then
       args="tunnel --edge-ip-version auto --config tunnel.yml run"
     else
-     args="tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile boot.log --loglevel info --url http://localhost:$vmess_port"
+     #args="tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile boot.log --loglevel info --url http://localhost:$vmess_port"
+     args="tunnel --url http://localhost:$vmess_port --no-autoupdate --logfile boot.log --loglevel info"
     fi
     nohup ./"$agg" $args >/dev/null 2>&1 &
     sleep 10
@@ -386,11 +527,11 @@ else
 fi
 fi
 }
-if [ -z "$ARGO_DOMAIN" ] && ! ps aux | grep "[l]ocalhost:$vmess_port" > /dev/null; then
-ps aux | grep '[l]ocalhost' | awk '{print $2}' | xargs -r kill -9 > /dev/null 2>&1
+if [ -z "$ARGO_DOMAIN" ] && ! ps aux | grep '[t]unnel --url' > /dev/null; then
+ps aux | grep '[t]unnel --url' | awk '{print $2}' | xargs -r kill -9 > /dev/null 2>&1
 cfgo
-elif [ -n "$ARGO_DOMAIN" ] && ! ps aux | grep "[t]oken $ARGO_AUTH" > /dev/null; then
-ps aux | grep '[t]oken' | awk '{print $2}' | xargs -r kill -9 > /dev/null 2>&1
+elif [ -n "$ARGO_DOMAIN" ] && ! ps aux | grep '[t]unnel --no' > /dev/null; then
+ps aux | grep '[t]unnel --no' | awk '{print $2}' | xargs -r kill -9 > /dev/null 2>&1
 cfgo
 else
 green "Arog进程已启动"
@@ -399,8 +540,8 @@ sleep 2
 if ! pgrep -x "$(cat sb.txt)" > /dev/null; then
 red "主进程未启动，根据以下情况一一排查"
 yellow "1、网页端权限是否开启"
-yellow "2、端口是否设置错误(2个TCP、1个UDP)"
-yellow "3、尝试更换网页端3个端口并重装"
+yellow "2、网页后台删除所有端口，让脚本自动生成随机可用端口"
+yellow "3、选择y运行一次重置"
 yellow "4、当前Serv00服务器炸了？等会再试"
 red "5、以上都试了，哥直接躺平，交给进程保活，过会再来看"
 fi
@@ -416,7 +557,7 @@ get_argodomain() {
     local argodomain=""
     while [[ $retry -lt $max_retries ]]; do
     ((retry++)) 
-    argodomain=$(grep -oE 'https://[[:alnum:]+\.-]+\.trycloudflare\.com' boot.log 2>/dev/null | sed 's@https://@@')
+    argodomain=$(cat boot.log 2>/dev/null | grep -a trycloudflare.com | awk 'NR==2{print}' | awk -F// '{print $2}' | awk '{print $1}')
       if [[ -n $argodomain ]]; then
         break
       fi
@@ -877,7 +1018,7 @@ proxies:
       Host: $argodomain 
 
 proxy-groups:
-- name: 负载均衡
+- name: Balance
   type: load-balance
   url: https://www.gstatic.com/generate_204
   interval: 300
@@ -889,7 +1030,7 @@ proxy-groups:
     - vmess-tls-argo-$NAME
     - vmess-argo-$NAME
 
-- name: 自动选择
+- name: Auto
   type: url-test
   url: https://www.gstatic.com/generate_204
   interval: 300
@@ -901,11 +1042,11 @@ proxy-groups:
     - vmess-tls-argo-$NAME
     - vmess-argo-$NAME
     
-- name: 🌍选择代理节点
+- name: Select
   type: select
   proxies:
-    - 负载均衡                                         
-    - 自动选择
+    - Balance                                         
+    - Auto
     - DIRECT
     - vless-reality-vision-$NAME                              
     - vmess-ws-$NAME
@@ -915,14 +1056,18 @@ proxy-groups:
 rules:
   - GEOIP,LAN,DIRECT
   - GEOIP,CN,DIRECT
-  - MATCH,🌍选择代理节点
+  - MATCH,Select
   
 EOF
 
-sibsub=$(cat sing_box.json 2>/dev/null)
-clmsub=$(cat clash_meta.yaml 2>/dev/null)
-echo
 sleep 2
+[ -d "$FILE_PATH" ] || mkdir -p "$FILE_PATH"
+echo "$baseurl" > ${FILE_PATH}/${USERNAME}_v2sub.txt
+cat clash_meta.yaml > ${FILE_PATH}/${USERNAME}_clashmeta.txt
+cat sing_box.json > ${FILE_PATH}/${USERNAME}_singbox.txt
+V2rayN_LINK="https://${USERNAME}.serv00.net/${USERNAME}_v2sub.txt"
+Clashmeta_LINK="https://${USERNAME}.serv00.net/${USERNAME}_clashmeta.txt"
+Singbox_LINK="https://${USERNAME}.serv00.net/${USERNAME}_singbox.txt"
 cat > list.txt <<EOF
 =================================================================================================
 
@@ -971,25 +1116,27 @@ $hy2_link
 -------------------------------------------------------------------------------------------------
 
 
-四、以上五个节点的聚合通用分享链接如下：
+四、以上五个节点的聚合通用订阅分享链接如下：
+$V2rayN_LINK
+
+以上五个节点聚合通用分享码：
 $baseurl
 -------------------------------------------------------------------------------------------------
+
+
+五、查看Sing-box与Clash-meta的订阅配置文件，请进入主菜单选择4
+
+Clash-meta订阅分享链接：
+$Clashmeta_LINK
+
+Sing-box订阅分享链接：
+$Singbox_LINK
+-------------------------------------------------------------------------------------------------
+
+=================================================================================================
+
 EOF
 cat list.txt
-echo "-------------------------------------------------------------------------------------------------"
-sleep 2
-echo
-echo "五、查看Clash-meta订阅配置文件"
-cat clash_meta.yaml
-echo "-------------------------------------------------------------------------------------------------"
-sleep 2
-echo
-echo "六、查看Sing-box订阅配置文件"
-cat sing_box.json
-echo
-echo "-------------------------------------------------------------------------------------------------"
-echo "================================================================================================="
-echo
 sleep 2
 rm -rf sb.log core tunnel.yml tunnel.json fake_useragent_0.2.0.json
 }
@@ -998,7 +1145,9 @@ install_singbox() {
 cd $WORKDIR
 read_ip
 argo_configure
+uuidport
 download_and_run_singbox
 get_links
+cd
 }
 install_singbox
