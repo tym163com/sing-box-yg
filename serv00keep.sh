@@ -49,15 +49,11 @@ for ip in "${ym[@]}"; do
 dig @8.8.8.8 +time=2 +short $ip >> hy2ip.txt
 sleep 1  
 done
-for ym in "${ym[@]}"; do
-# 引用frankiejun API
-response=$(curl -s "https://ss.botai.us.kg/api/getip?host=$ym")
-if [[ -z "$response" ]]; then
-for ip in "${ym[@]}"; do
-dig @8.8.8.8 +time=2 +short $ip >> ip.txt
+for host in "${ym[@]}"; do
+response=$(curl -sL --connect-timeout 5 --max-time 7 "https://ss.serv0.us.kg/api/getip?host=$host")
+if [[ -z "$response" || "$response" == *unknown* ]]; then
+dig @8.8.8.8 +time=2 +short $host >> ip.txt
 sleep 1  
-done
-break
 else
 echo "$response" | while IFS='|' read -r ip status; do
 if [[ $status == "Accessible" ]]; then
@@ -282,7 +278,7 @@ openssl ecparam -genkey -name prime256v1 -out "private.key"
 openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=$USERNAME.serv00.net"
 
 nb=$(hostname | cut -d '.' -f 1 | tr -d 's')
-if [ "$nb" == "14" ] || [ "$nb" == "15" ]; then
+if [[ "$nb" =~ (14|15|16) ]]; then
 ytb='"jnn-pa.googleapis.com",'
 fi
 hy1p=$(sed -n '1p' hy2ip.txt)
@@ -424,19 +420,28 @@ hy3p=$(sed -n '3p' hy2ip.txt)
     {
       "type": "direct",
       "tag": "direct"
-    },
-    {
-      "type": "block",
-      "tag": "block"
     }
   ],
    "route": {
+       "rule_set": [
+      {
+        "tag": "geosite-google-gemini",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-google-gemini.srs",
+        "download_detour": "direct"
+      }
+    ],
     "rules": [
     {
      "domain": [
      $ytb
      "oh.my.god"
       ],
+     "outbound": "wg"
+    },
+    {
+     "rule_set":"geosite-google-gemini",
      "outbound": "wg"
     }
     ],
