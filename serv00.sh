@@ -565,7 +565,7 @@ get_argodomain() {
       sleep 2
     done  
     if [ -z ${argodomain} ]; then
-    argodomain="Argo临时域名暂时获取失败，Argo节点暂不可用"
+    argodomain="Argo临时域名暂时获取失败，Argo节点暂不可用，其他节点依旧可用"
     fi
     echo "$argodomain"
   fi
@@ -1069,8 +1069,13 @@ cat sing_box.json > ${FILE_PATH}/${UUID}_singbox.txt
 V2rayN_LINK="https://${USERNAME}.serv00.net/${UUID}_v2sub.txt"
 Clashmeta_LINK="https://${USERNAME}.serv00.net/${UUID}_clashmeta.txt"
 Singbox_LINK="https://${USERNAME}.serv00.net/${UUID}_singbox.txt"
+allip=$(cat hy2ip.txt)
 cat > list.txt <<EOF
 =================================================================================================
+
+当前客户端正在使用的IP：$IP ,如默认节点IP被墙，可在客户端地址更换以下其他IP
+$allip
+-------------------------------------------------------------------------------------------------
 
 一、Vless-reality分享链接如下：
 $vl_link
@@ -1088,7 +1093,7 @@ CF节点落地到CF网站的地区为：$IP所在地区
 CF节点的TLS必须开启
 CF节点落地到非CF网站的地区为：$IP所在地区
 
-注：如果serv00的IP被墙，proxyip依旧有效，但用于客户端地址与端口的非标端口反代IP将不可用
+注：如果Serv00的IP被墙，proxyip依旧有效，但用于客户端地址与端口的非标端口反代IP将不可用
 注：可能有大佬会扫Serv00的反代IP作为其共享IP库或者出售，请慎重将reality域名设置为CF域名
 -------------------------------------------------------------------------------------------------
 
@@ -1308,7 +1313,7 @@ sleep 1
 done
 for host in "${ym[@]}"; do
 response=$(curl -sL --connect-timeout 5 --max-time 7 "https://ss.serv0.us.kg/api/getip?host=$host")
-if [[ -z "$response" || "$response" == *unknown* ]]; then
+if [[ "$response" =~ ^$|unknown|not|error ]]; then
 dig @8.8.8.8 +time=2 +short $host >> $WORKDIR/ip.txt
 sleep 1 
 else
