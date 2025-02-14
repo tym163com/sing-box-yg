@@ -53,7 +53,7 @@ echo "甬哥Github项目  ：github.com/yonggekkk"
 echo "甬哥Blogger博客 ：ygkkk.blogspot.com"
 echo "甬哥YouTube频道 ：www.youtube.com/@ygkkk"
 echo "自动远程部署Serv00三合一协议脚本【VPS+软路由】"
-echo "版本：V25.1.22"
+echo "版本：V25.2.13"
 echo "*****************************************************"
 echo "*****************************************************"
               count=0  
@@ -87,7 +87,7 @@ echo "*****************************************************"
             echo "🎉恭喜！✅检测到所有进程正常运行中 "
             echo "配置显示如下："
           sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no "$SSH_USER@$HOST" \
-             "cat domains/\$(whoami).serv00.net/logs/list.txt; \
+              "cat domains/\$(whoami | tr '[:upper:]' '[:lower:]').serv00.net/logs/list.txt; \
               echo '===================================================='" 
             fi
            else
