@@ -53,7 +53,7 @@ echo "甬哥Github项目  ：github.com/yonggekkk"
 echo "甬哥Blogger博客 ：ygkkk.blogspot.com"
 echo "甬哥YouTube频道 ：www.youtube.com/@ygkkk"
 echo "自动远程部署Serv00三合一协议脚本【VPS+软路由】"
-echo "版本：V25.2.13"
+echo "版本：V25.2.14"
 echo "*****************************************************"
 echo "*****************************************************"
               count=0  
@@ -85,10 +85,11 @@ echo "*****************************************************"
             echo "远程命令执行结果：$output"
           else
             echo "🎉恭喜！✅检测到所有进程正常运行中 "
-            echo "配置显示如下："
-          sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no "$SSH_USER@$HOST" \
-              "cat domains/\$(whoami | tr '[:upper:]' '[:lower:]').serv00.net/logs/list.txt; \
-              echo '===================================================='" 
+            SSH_USER_LOWER=$(echo "$SSH_USER" | tr '[:upper:]' '[:lower:]')
+            sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no "$SSH_USER@$HOST" "
+            echo \"配置显示如下：\"
+            cat domains/${SSH_USER_LOWER}.serv00.net/logs/list.txt
+            echo \"====================================================\""
             fi
            else
             echo "===================================================="
