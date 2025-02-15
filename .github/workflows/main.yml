@@ -1,8 +1,9 @@
 name: Parallel URL Fetch
 
 on:
+  #如要使用定时运行，请把下面两行开头的#符号删除
   #schedule:
-  # - cron: '*/10 * * * *' # 每10分钟执行一次（公开库每月2000分钟运行时长，每天64分钟）
+  #- cron: '*/10 * * * *' # 每10分钟执行一次（公开库每月2000分钟运行时长，每天64分钟）
   workflow_dispatch: 
 
 jobs:
@@ -15,14 +16,14 @@ jobs:
 
     - name: Fetch URLs in parallel
       # secrets设置，变量名称：http
-      # 变量值(保活网址格式)：http://保活网址,http://保活网址,http://…………
+      # 变量值(多个保活网页之间用,分隔)：http://保活网址1,http://保活网址2,http://…………
       run: |
         IFS=$',，' read -r -a http <<< "${{ secrets.http }}"
          echo "*****************************************************"
          echo "甬哥Github项目  ：github.com/yonggekkk"
          echo "甬哥Blogger博客 ：ygkkk.blogspot.com"
          echo "甬哥YouTube频道 ：www.youtube.com/@ygkkk"
-         echo "🎉Github定时运行serv00网页保活🎉"
+         echo "🎉Github定时运行serv00保活网页🎉"
          echo "请先确认已成功安装甬哥Serv00本地SSH三协议一键脚本"
          echo "脚本地址：https://github.com/yonggekkk/sing-box-yg"
          echo "*****************************************************"
