@@ -24,21 +24,6 @@ export resport=${resport:-''}
 
 USERNAME=$(whoami | tr '[:upper:]' '[:lower:]')
 HOSTNAME=$(hostname)
-if [[ "$resport" =~ ^[Yy]$ ]]; then
-portlist=$(devil port list | grep -E '^[0-9]+[[:space:]]+[a-zA-Z]+' | sed 's/^[[:space:]]*//')
-if [[ -z "$portlist" ]]; then
-yellow "无端口"
-else
-while read -r line; do
-port=$(echo "$line" | awk '{print $1}')
-port_type=$(echo "$line" | awk '{print $2}')
-yellow "删除端口 $port ($port_type)"
-devil port del "$port_type" "$port"
-done <<< "$portlist"
-fi
-check_port
-fi
-
 if [[ "$reset" =~ ^[Yy]$ ]]; then
 #crontab -l | grep -v "serv00keep" >rmcron
 #crontab rmcron >/dev/null 2>&1
@@ -64,10 +49,9 @@ read_ip(){
 nb=$(echo "$HOSTNAME" | cut -d '.' -f 1 | tr -d 's')
 ym=("$HOSTNAME" "cache$nb.serv00.com" "web$nb.serv00.com")
 rm -rf ip.txt hy2ip.txt
-for ip in "${ym[@]}"; do
-dig @8.8.8.8 +time=5 +short $ip >> hy2ip.txt
-sleep 1  
-done
+dig @8.8.8.8 +time=5 +short "web$nb.serv00.com" >> hy2ip.txt
+dig @8.8.8.8 +time=5 +short "$HOSTNAME" >> hy2ip.txt
+dig @8.8.8.8 +time=5 +short "cache$nb.serv00.com" >> hy2ip.txt
 for host in "${ym[@]}"; do
 response=$(curl -sL --connect-timeout 5 --max-time 7 "https://ss.serv0.us.kg/api/getip?host=$host")
 if [[ "$response" =~ ^$|unknown|not|error ]]; then
@@ -1173,6 +1157,21 @@ cat list.txt
 sleep 2
 rm -rf sb.log core tunnel.yml tunnel.json fake_useragent_0.2.0.json
 }
+
+if [[ "$resport" =~ ^[Yy]$ ]]; then
+portlist=$(devil port list | grep -E '^[0-9]+[[:space:]]+[a-zA-Z]+' | sed 's/^[[:space:]]*//')
+if [[ -z "$portlist" ]]; then
+yellow "无端口"
+else
+while read -r line; do
+port=$(echo "$line" | awk '{print $1}')
+port_type=$(echo "$line" | awk '{print $2}')
+yellow "删除端口 $port ($port_type)"
+devil port del "$port_type" "$port"
+done <<< "$portlist"
+fi
+check_port
+fi
 
 install_singbox() {
 cd $WORKDIR
