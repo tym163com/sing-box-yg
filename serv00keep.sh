@@ -54,7 +54,7 @@ dig @8.8.8.8 +time=5 +short "web$nb.serv00.com" >> hy2ip.txt
 dig @8.8.8.8 +time=5 +short "$HOSTNAME" >> hy2ip.txt
 dig @8.8.8.8 +time=5 +short "cache$nb.serv00.com" >> hy2ip.txt
 for host in "${ym[@]}"; do
-response=$(curl -sL --connect-timeout 5 --max-time 7 "https://ss.serv0.us.kg/api/getip?host=$host")
+response=$(curl -sL --connect-timeout 5 --max-time 7 "https://ss.fkj.pp.ua/api/getip?host=$host")
 if [[ "$response" =~ ^$|unknown|not|error ]]; then
 dig @8.8.8.8 +time=5 +short $host >> ip.txt
 sleep 1  
@@ -1175,6 +1175,7 @@ fi
 check_port
 fi
 rm -rf $HOME/domains/${snb}.${USERNAME}.serv00.net/logs/*
+rm -rf $HOME/domains/${USERNAME}.serv00.net/logs/access/*
 install_singbox() {
 cd $WORKDIR
 read_ip

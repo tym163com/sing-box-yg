@@ -1331,7 +1331,7 @@ dig @8.8.8.8 +time=5 +short "web$nb.serv00.com" >> $WORKDIR/hy2ip.txt
 dig @8.8.8.8 +time=5 +short "$HOSTNAME" >> $WORKDIR/hy2ip.txt
 dig @8.8.8.8 +time=5 +short "cache$nb.serv00.com" >> $WORKDIR/hy2ip.txt
 for host in "${ym[@]}"; do
-response=$(curl -sL --connect-timeout 5 --max-time 7 "https://ss.serv0.us.kg/api/getip?host=$host")
+response=$(curl -sL --connect-timeout 5 --max-time 7 "https://ss.fkj.pp.ua/api/getip?host=$host")
 if [[ "$response" =~ ^$|unknown|not|error ]]; then
 dig @8.8.8.8 +time=5 +short $host >> $WORKDIR/ip.txt
 sleep 1 
@@ -1372,8 +1372,7 @@ echo -e "检测到最新 Serv00-sb-yg 脚本版本号：${yellow}${latestV}${re}
 echo -e "${yellow}$(curl -sL https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/sversion)${re}"
 fi
 echo -e "========================================================="
-ps aux | grep '[r]un -c con' > /dev/null && green "主进程运行正常" || yellow "主进程启动失败，请检测节点是否可用"
-echo
+ps aux | grep '[r]un -c con' > /dev/null && green "Sing-box主进程运行正常" || yellow "Sing-box主进程启动失败，请检测节点是否可用"
 if [ -f "$WORKDIR/boot.log" ] && grep -q "trycloudflare.com" "$WORKDIR/boot.log" 2>/dev/null && ps aux | grep '[t]unnel --u' > /dev/null; then
 argosl=$(cat "$WORKDIR/boot.log" 2>/dev/null | grep -a trycloudflare.com | awk 'NR==2{print}' | awk -F// '{print $2}' | awk '{print $1}')
 checkhttp=$(curl -o /dev/null -s -w "%{http_code}\n" "https://$argosl")
@@ -1392,8 +1391,7 @@ fi
 if [ ! -f "$WORKDIR/boot.log" ] && ! ps aux | grep '[t]unnel --n' > /dev/null; then
 yellow "Argo固定域名：$(cat $WORKDIR/gdym.log 2>/dev/null)，启动失败，请检查相关参数是否输入有误"
 fi
-echo
-green "多功能主页如下，支持网页保活、网页重启、网页节点查询"
+green "多功能主页如下：支持网页保活、网页重启、网页节点查询"
 purple "http://${snb}.${USERNAME}.serv00.net"
 #if ! crontab -l 2>/dev/null | grep -q 'serv00keep'; then
 #if [ -f "$WORKDIR/boot.log" ] || grep -q "trycloudflare.com" "$WORKDIR/boot.log" 2>/dev/null; then
